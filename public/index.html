@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sleep Tracker</title>
+
+    <!-- Internal CSS -->
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f7fc;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            color: #333;
+        }
+
+        h1 {
+            color: #4CAF50;
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            color: #333;
+            font-size: 1.8rem;
+            margin-top: 20px;
+        }
+
+        form {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 300px;
+            margin-bottom: 30px;
+        }
+
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 8px;
+            font-size: 1rem;
+        }
+
+        input[type="datetime-local"],
+        input[type="number"] {
+            width: 94%;
+            padding: 10px;
+            font-size: 1rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 16px;
+            background-color: #fafafa;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #4CAF50;
+            color: #ffffff;
+            border: none;
+            border-radius: 4px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+            max-width: 500px;
+            width: 100%;
+        }
+
+        li {
+            background-color: #fff;
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        li:nth-child(odd) {
+            background-color: #f9f9f9;
+        }
+
+        #sleepList li {
+            background-color: #fff;
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            transition: background-color 0.3s ease;
+        }
+
+        #sleepList li:nth-child(odd) {
+            background-color: #f9f9f9;
+        }
+
+        #sleepList li:hover {
+            background-color: #f1f1f1;
+        }
+
+        .sleep-entry {
+            font-size: 1rem;
+            line-height: 1.5;
+        }
+
+        .sleep-entry strong {
+            color: #4CAF50;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Sleep Tracker</h1>
+
+    <!-- Sleep form -->
+    <form id="sleepForm">
+        <label for="bedtime">Bedtime:</label>
+        <input type="datetime-local" id="bedtime" required><br>
+
+        <label for="wakeupTime">Wake-up Time:</label>
+        <input type="datetime-local" id="wakeupTime" required><br>
+
+        <button type="submit">Add Sleep Entry</button>
+    </form>
+
+    <!-- Sleep Entries -->
+    <h2>Sleep Entries</h2>
+    <ul id="sleepList"></ul>
+
+    <script>
+        const sleepForm = document.getElementById('sleepForm');
+        const sleepList = document.getElementById('sleepList');
+
+        // Fetch and display sleep entries from the API
+        
+        async function fetchSleepEntries() {
+            const response = await fetch('/api/sleep');
+            const data = await response.json();
+
+            // Clear existing entries
+            sleepList.innerHTML = '';
+
+            // Loop through each sleep entry and format the times
+            data.sleepEntries.forEach(entry => {
+                // Convert Bedtime and Wake-up Time to IST
+                const bedtime = new Date(entry.bedtime);
+                const wakeupTime = new Date(entry.wakeupTime);
+
+                // Convert to IST (UTC +5:30)
+                const options = {
+                    weekday: 'short',
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: 'numeric',
+                    second: 'numeric',
+                    hour12: true
+                };
+                const istBedtime = new Date(bedtime.getTime() + (5.5 * 60 * 60 * 1000));  // Convert to IST by adding 5.5 hours
+                const istWakeupTime = new Date(wakeupTime.getTime() + (5.5 * 60 * 60 * 1000));  // Same conversion for wakeup time
+
+                // Format the dates to a readable format
+                const formattedBedtime = istBedtime.toLocaleString('en-IN', options);
+                const formattedWakeupTime = istWakeupTime.toLocaleString('en-IN', options);
+
+                // Create a list item for each entry
+                const li = document.createElement('li');
+                li.classList.add('sleep-entry');
+                li.innerHTML = `
+      <strong>Bedtime:</strong> ${formattedBedtime} <br>
+      <strong>Wake-up Time:</strong> ${formattedWakeupTime} <br>
+      <strong>Hours Slept:</strong> ${entry.hoursSlept}
+    `;
+
+                // Append the entry to the list
+                sleepList.appendChild(li);
+            });
+        }
+
+
+        // Submit sleep data
+        sleepForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const bedtime = document.getElementById('bedtime').value;
+            const wakeupTime = document.getElementById('wakeupTime').value;
+
+            const response = await fetch('/api/sleep', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ bedtime, wakeupTime })
+            });
+
+            if (response.ok) {
+                alert('Sleep entry added!');
+                fetchSleepEntries();
+            } else {
+                alert('Failed to add entry');
+            }
+        });
+
+        // Initial load of sleep entries
+        fetchSleepEntries();
+    </script>
+</body>
+
+</html>
